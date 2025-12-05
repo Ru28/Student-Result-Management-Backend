@@ -170,7 +170,7 @@ export const updateStudentInfo = async (req, res) => {
 
 export const deleteStudentById = async (req, res) => {
     try {
-        const { id } = req.query;
+        const { id } = req.params;
 
         if (!id) {
             return res.status(400).json({
@@ -279,3 +279,32 @@ export const getAllStudents = async (req, res) => {
     });
   }
 };
+
+export const getStudent = async(req,res) => {
+    try {
+        const {id}= req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "student id is required"
+            });
+        }
+
+        const student = await Students.findByPk(id);
+        if(!student){
+            return res.status(404).json({
+                success: false,
+                message: "student not found"
+            });
+        }
+
+        return res.status(200).json({success:true,student,message:"student data fetch successfully"});
+
+    } catch (error) {
+         return res.status(500).json({
+            success: false,
+            message: "internal server error",
+            error
+        });
+    }
+}

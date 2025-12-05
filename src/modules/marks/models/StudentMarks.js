@@ -4,7 +4,7 @@ import sequelize from "../../../../config/db.js";
 const StudentMarks = sequelize.define("StudentMarks",{
     id:{
         type: DataTypes.UUID,
-        defaultValue: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
     },
     studentId: {
