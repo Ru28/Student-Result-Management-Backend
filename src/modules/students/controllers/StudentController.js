@@ -226,8 +226,8 @@ export const getAllStudents = async (req, res) => {
       limit = 10,
       search = "",
       standard,
-      sortBy = "createdAt",  // default sorting field
-      sortOrder = "DESC",     // ASC or DESC
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = req.query;
 
     page = parseInt(page);
@@ -237,11 +237,19 @@ export const getAllStudents = async (req, res) => {
     const whereClause = {};
 
     if (search) {
-      whereClause[Op.or] = [
+      // Check if search is a valid number for rollNumber comparison
+      const searchConditions = [
         { name: { [Op.iLike]: `%${search}%` } },
         { studentCardId: { [Op.iLike]: `%${search}%` } },
-        { rollNumber: { [Op.eq]: search } } // exact match for rollNumber
       ];
+      
+      // Only add rollNumber condition if search is a valid number
+      const rollNumberValue = parseInt(search);
+      if (!isNaN(rollNumberValue)) {
+        searchConditions.push({ rollNumber: { [Op.eq]: rollNumberValue } });
+      }
+      
+      whereClause[Op.or] = searchConditions;
     }
 
     // 🎓 Filter by standard
