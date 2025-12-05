@@ -29,7 +29,7 @@ const Students = sequelize.define("Students",{
         allowNull: false,
     },
     phone: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING,
         allowNull: false,
     },
 },{
