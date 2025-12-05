@@ -21,7 +21,7 @@ export const setStudentInfo = async(req, res)=>{
             return res.status(400).json({success:false,message:"invalid phone number. please inter valid phone number"});
         }
 
-        const letter = String.fromCharCode(64 + standard); 
+        const letter = String.fromCharCode(64 + Number(standard)); 
         const studentCardId = `${letter}${rollNumber}`;
         console.log(studentCardId)
         const existStudent = await Students.findOne({
@@ -107,13 +107,15 @@ export const updateStudentInfo = async (req, res) => {
         if (standard || rollNumber) {
             const updatedStandard = standard || student.standard;
             const updatedRoll = rollNumber || student.rollNumber;
-
-            const letter = String.fromCharCode(64 + updatedStandard);
+            const letter = String.fromCharCode(64 + Number(updatedStandard));
             studentCardId = `${letter}${updatedRoll}`;
 
             // Ensure uniqueness
             const exists = await Students.findOne({
-                where: { studentCardId, id: { $ne: id } }
+                where: {
+                    studentCardId,
+                    id: { [Op.ne]: id }
+                }
             });
 
             if (exists) {
