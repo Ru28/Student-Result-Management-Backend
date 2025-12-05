@@ -1,3 +1,4 @@
+import sequelize from "../../../../config/db.js";
 import AggregationMarks from "../../marks/models/AggregationMarks.js";
 import StudentMarks from "../../marks/models/StudentMarks.js";
 import Students from "../models/Students.js";
@@ -232,51 +233,72 @@ export const getAllStudents = async (req, res) => {
 
     page = parseInt(page);
     limit = parseInt(limit);
-
-    // 🔎 Search conditions
-    const whereClause = {};
-
-    if (search) {
-      // Check if search is a valid number for rollNumber comparison
-      const searchConditions = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { studentCardId: { [Op.iLike]: `%${search}%` } },
-      ];
-      
-      // Only add rollNumber condition if search is a valid number
-      const rollNumberValue = parseInt(search);
-      if (!isNaN(rollNumberValue)) {
-        searchConditions.push({ rollNumber: { [Op.eq]: rollNumberValue } });
-      }
-      
-      whereClause[Op.or] = searchConditions;
-    }
-
-    // 🎓 Filter by standard
-    if (standard) {
-      whereClause.standard = standard;
-    }
-
     const offset = (page - 1) * limit;
 
-    // 🏆 Sorting logic
-    const validSortOrder = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+    // Build WHERE clause
+    let whereConditions = [];
+    let queryParams = [];
 
-    const { rows, count } = await Students.findAndCountAll({
-      where: whereClause,
-      offset,
-      limit,
-      order: [[sortBy, validSortOrder]],
+    if (search) {
+      whereConditions.push(`(s."name" ILIKE $${queryParams.length + 1} OR s."studentCardId" ILIKE $${queryParams.length + 1})`);
+      queryParams.push(`%${search}%`);
+      
+      const rollNumberValue = parseInt(search);
+      if (!isNaN(rollNumberValue)) {
+        whereConditions.push(`s."rollNumber" = $${queryParams.length + 1}`);
+        queryParams.push(rollNumberValue);
+      }
+    }
+
+    if (standard) {
+      whereConditions.push(`s."standard" = $${queryParams.length + 1}`);
+      queryParams.push(standard);
+    }
+
+    const whereClause = whereConditions.length > 0 ? 
+      `WHERE ${whereConditions.join(' OR ')}` : '';
+
+    // Build ORDER BY clause
+    const orderByClause = `ORDER BY s."${sortBy}" ${sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"}`;
+
+    // Count query
+    const countQuery = `
+      SELECT COUNT(*) as count 
+      FROM "Students" s
+      ${whereClause}
+    `;
+
+    // Main query with LEFT JOIN to get resultMark
+    const mainQuery = `
+      SELECT 
+        s.*,
+        COALESCE(am."resultMark", 0) as "resultMark"
+      FROM "Students" s
+      LEFT JOIN "AggregationMarks" am ON s.id = am."studentId"
+      ${whereClause}
+      ${orderByClause}
+      LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+    `;
+
+    // Execute queries
+    const countResult = await sequelize.query(countQuery, {
+      bind: queryParams,
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    const students = await sequelize.query(mainQuery, {
+      bind: [...queryParams, limit, offset],
+      type: sequelize.QueryTypes.SELECT
     });
 
     return res.status(200).json({
       success: true,
-      totalRecords: count,
+      totalRecords: parseInt(countResult[0].count),
       currentPage: page,
-      totalPages: Math.ceil(count / limit),
+      totalPages: Math.ceil(parseInt(countResult[0].count) / limit),
       sortBy,
-      sortOrder: validSortOrder,
-      data: rows,
+      sortOrder: sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC",
+      data: students,
     });
 
   } catch (error) {
