@@ -23,7 +23,6 @@ export const setStudentInfo = async(req, res)=>{
 
         const letter = String.fromCharCode(64 + Number(standard)); 
         const studentCardId = `${letter}${rollNumber}`;
-        console.log(studentCardId)
         const existStudent = await Students.findOne({
             where:{
                 studentCardId
